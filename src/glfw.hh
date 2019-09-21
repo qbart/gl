@@ -14,7 +14,7 @@ struct GLFW
 		void hintContextVersion(int major, int minor)
 		{
 			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, major);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor);
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor); 
 		}
 
 		void hintCoreProfileForwardCompat()

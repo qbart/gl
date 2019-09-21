@@ -4,34 +4,97 @@
 #include "glew.hh"
 #include "glfw.hh"
 #include "types.hh"
+#include "files.hh"
 #include <vector>
 #include <unordered_map>
 #include <sstream>
+#include <tuple>
+#include <functional>
+#include <future>
+#include <atomic>
 
+void status(std::ostream& out, const string& name, bool success)
+{
+	out 
+		<< name
+		<< ": "
+		<< (success ? "\033[32m" : "\033[91m")
+		<< (success ? "ok" : "x")
+		<< "\033[0m"
+		<< "\n";
+}
 
 class Shaders
 {
 private:
 	GL gl;
-	vector<uint> shaders;
+	unordered_map<string, uint> shaders;
+	std::atomic<uint> pendingTaskCount = 0;
+	unordered_map<string, std::future<Files::ReadStatus>> pendingTasks;
+	bool done = false;
 
 public:
-	uint add(uint shaderType, const string &source);
-	auto addVertexShader(const string &source) { return add(GL_VERTEX_SHADER, source); }
-	auto addFragmentShader(const string &source) { return add(GL_FRAGMENT_SHADER, source); }
+	void load(const string &path);
+	bool isLoading() const;
+	void onFinish(const string &path, const Files::OnRead &callback);
+	void onFinish(const std::function<void()> &callback);
+	void updateLoadProgress();
+
+	uint add(uint shaderType, const string &key, const string &source);
+	auto addVertexShader(const string &key, const string &source) { return add(GL_VERTEX_SHADER, key, source); }
+	auto addFragmentShader(const string &key, const string &source) { return add(GL_FRAGMENT_SHADER, key, source); }
+	uint id(const string &key);
 
 	string compileLog(uint id);
 };
 
+void Shaders::load(const string &path)
+{
+	if (pendingTasks.count(path) == 0)
+	{
+		++pendingTaskCount;
+		pendingTasks.emplace(path,
+				std::async(std::launch::async, [this](const string &path) {
+					--pendingTaskCount;
+					return Files::readText(string(SHADERS_PATH) + path + string(".glsl"));
+				}, path)
+			);
+	}
 
-uint Shaders::add(uint type, const string &source)
+}
+
+bool Shaders::isLoading() const
+{
+	return !done;
+}
+
+void Shaders::updateLoadProgress()
+{
+	done = (pendingTaskCount == 0);
+}
+
+void Shaders::onFinish(const string &path, const Files::OnRead &callback)
+{
+	if (done)
+		callback(pendingTasks[path].get());
+}
+
+void Shaders::onFinish(const std::function<void()> &callback)
+{
+	if (done)
+	{
+		pendingTasks.clear();
+		callback();
+	}
+}
+
+
+uint Shaders::add(uint type, const string &key, const string &source)
 {
 	auto id = gl.shader.create(type);
 	gl.shader.source(id, source);
 	gl.shader.compile(id);
-
-	if (gl.shader.getInt(id, GL_COMPILE_STATUS))
-		shaders.push_back(id);
+	shaders[key] = id;
 
 	return id;
 }
@@ -58,28 +121,51 @@ string Shaders::compileLog(uint id)
 	return ss.str();
 }
 
-string VERTEX_SHADER = R"(
-#version 430 core
-
-void main()
+uint Shaders::id(const string &key)
 {
-
+	return shaders.at(key);
 }
 
-)";
-
-string FRAGMENT_SHADER = R"(
-#version 430 core
-
-void main()
+class Programs
 {
-}
+private:
+	GL gl;
+	unordered_map<string, uint> programs;
 
-)";
+public:
+	uint create(const string &key)
+	{
+		auto id = gl.program.create();
+		programs[key] = id;
 
+		return id;
+	}
 
+	uint id(const string& key) const
+	{
+		return programs.at(key);
+	}
 
+	uint use(const string& key)
+	{
+		auto id = programs[key];
+		gl.program.use(id);
+		return id;
+	}
 
+	bool link(const string& key)
+	{
+		auto id = programs[key];
+		gl.program.link(id);
+		return gl.program.getInt(id, GL_LINK_STATUS);
+	}
+};
+
+struct Resources
+{
+	Programs programs;
+	Shaders shaders;
+};
 
 int main(int argc, char *argv[])
 {
@@ -113,32 +199,55 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	Shaders shaders;
-	auto vert = shaders.addVertexShader(VERTEX_SHADER);
-	auto frag = shaders.addFragmentShader(FRAGMENT_SHADER);
-	std::cout << shaders.compileLog(vert);
-	std::cout << shaders.compileLog(frag);
-
-	auto prog = gl.program.create();
-	gl.shader.attach(prog, vert);
-	gl.shader.attach(prog, frag);
-	gl.program.link(prog);
-	if (!gl.program.getInt(prog, GL_LINK_STATUS))
-		std::cerr << "Program not linked\n";
-	else
-		std::cout << "Program: ok\n";
-
-	gl.program.use(prog);
-	gl.shader.detach(prog, vert);
-	gl.shader.detach(prog, frag);
-	gl.shader.del(vert);
-	gl.shader.del(frag);
-	gl.program.use(0);
+	Resources res;
 
 	while (!glfw.window.shouldClose(window))
 	{
-		gl.viewport.set(glfw.window.framebufferSize(window));
+		if (res.shaders.isLoading())
+		{
+			res.shaders.load("pass/vert");
+			res.shaders.load("pass/frag");
 
+			res.shaders.updateLoadProgress();
+
+			res.shaders.onFinish("pass/vert", [&res, &gl](const Files::ReadStatus& stat) {
+				res.shaders.addVertexShader("pass/vert", Files::text(stat));
+			});
+			res.shaders.onFinish("pass/frag", [&res, &gl](const Files::ReadStatus& stat) {
+				res.shaders.addFragmentShader("pass/frag", Files::text(stat));
+			});
+
+			res.shaders.onFinish([&res, &gl]() {
+				auto prog = res.programs.create("pass");
+				auto vert = res.shaders.id("pass/vert");
+				auto frag = res.shaders.id("pass/frag");
+				gl.shader.attach(prog, vert);
+				gl.shader.attach(prog, frag);
+
+				if (!res.programs.link("pass"))
+				{
+					status(std::cerr, "program/pass", false);
+					std::cerr << "-- Vertex --\n" << res.shaders.compileLog(vert);
+					std::cerr << "-- Fragment --\n" << res.shaders.compileLog(frag);
+				}
+				else
+				{
+					gl.program.use(prog);
+					gl.shader.detach(prog, vert);
+					gl.shader.detach(prog, frag);
+					gl.shader.del(vert);
+					gl.shader.del(frag);
+					gl.program.use(0);
+					status(std::cout, "program/pass", true);
+				}
+			});
+		}
+
+		gl.viewport.set(glfw.window.framebufferSize(window));
+		//
+		res.programs.use("pass");
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		//
 		glfw.window.swapBuffers(window);
 		glfw.pollEvents();
 

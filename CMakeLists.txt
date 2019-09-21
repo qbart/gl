@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+set(SHADERS_PATH "${CMAKE_SOURCE_DIR}/res/shaders/")
+
 if(WIN32)
 	set(CMAKE_FIND_LIBRARY_PREFIXES "")
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
@@ -36,6 +38,7 @@ source_group("glfw" FILES ${GLFW_SRC_FILES})
 add_definitions(
 	-D_WINDOWS
 	-DWIN32
+	-DSHADERS_PATH="${SHADERS_PATH}"
 )
 
 
