@@ -13,6 +13,133 @@
 #include <future>
 #include <atomic>
 
+
+
+static void gl_printInfo()
+{
+	GL gl;
+
+	// print general info
+	std::cout << "GL_VERSION: " << gl.get.str(GL_VERSION) << "\n";
+	std::cout << "GL_SHADING_LANGUAGE_VERSION: " << gl.get.str(GL_SHADING_LANGUAGE_VERSION) << "\n";
+
+	/*
+	GLint maxI;
+	Dimension dim;
+
+	glGetIntegerv(GL_MAX_VIEWPORTS, &maxI);
+	Log::i("OpenGL", String("GL_MAX_VIEWPORTS = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_DEPTH_TEXTURE_SAMPLES, &maxI);
+	Log::i("OpenGL", String("GL_MAX_DEPTH_TEXTURE_SAMPLES = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_FRAMEBUFFER_WIDTH, &dim.width);
+	glGetIntegerv(GL_MAX_FRAMEBUFFER_HEIGHT, &dim.height);
+	Log::i("OpenGL", String("GL_MAX_FRAMEBUFFER_WIDTH x GL_MAX_FRAMEBUFFER_HEIGHT = ").append(dim));
+
+	glGetIntegerv(GL_MAX_FRAMEBUFFER_LAYERS, &maxI);
+	Log::i("OpenGL", String("GL_MAX_FRAMEBUFFER_LAYERS = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_FRAMEBUFFER_SAMPLES, &maxI);
+	Log::i("OpenGL", String("GL_MAX_FRAMEBUFFER_SAMPLES = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxI);
+	Log::i("OpenGL", String("GL_MAX_TEXTURE_SIZE = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxI);
+	Log::i("OpenGL", String("GL_MAX_TEXTURE_IMAGE_UNITS = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &maxI);
+	Log::i("OpenGL", String("GL_MAX_TEXTURE_BUFFER_SIZE = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE, &maxI);
+	Log::i("OpenGL", String("GL_MAX_RECTANGLE_TEXTURE_SIZE = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &maxI);
+	Log::i("OpenGL", String("GL_MAX_RENDERBUFFER_SIZE = ").append(maxI));
+
+	glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &maxI);
+	Log::i("OpenGL", String("GL_MAX_CUBE_MAP_TEXTURE_SIZE = ").append(maxI));
+
+	if (GLEW_EXT_texture_filter_anisotropic)
+	{
+		GLfloat maxF;
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxF);
+		Log::i("OpenGL", String("GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT = ").append(maxI));
+	}
+	else
+	{
+		Log::i("OpenGL", String("GLEW_EXT_texture_filter_anisotropic = not supported"));
+	}
+
+	*/
+}
+
+static const char* gl_debugSourceAttr(GLenum source)
+{
+	switch (source)
+	{
+	case GL_DEBUG_SOURCE_API_ARB: return "API";
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB: return "WINDOW_SYSTEM";
+	case GL_DEBUG_SOURCE_SHADER_COMPILER_ARB: return "SHADER_COMPILER";
+	case GL_DEBUG_SOURCE_THIRD_PARTY_ARB: return "THIRD_PARTY";
+	case GL_DEBUG_SOURCE_APPLICATION_ARB: return "APPLICATION";
+	case GL_DEBUG_SOURCE_OTHER_ARB: return "OTHER";
+	default: return "Unknown source";
+	}
+}
+
+static const char* gl_debugTypeAttr(GLenum type)
+{
+	switch (type)
+	{
+	case GL_DEBUG_TYPE_ERROR_ARB: return "ERROR";
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB: return "DEPRECATED_BEHAVIOR";
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB: return "UNDEFINED_BEHAVIOR";
+	case GL_DEBUG_TYPE_PORTABILITY_ARB: return "PORTABILITY";
+	case GL_DEBUG_TYPE_PERFORMANCE_ARB: return "PERFORMANCE";
+	case GL_DEBUG_TYPE_OTHER_ARB: return "OTHER";
+	default: return "Unknown type";
+	}
+}
+
+static const char* gl_debugServerityAttr(GLenum severity)
+{
+	switch (severity)
+	{
+	case GL_DEBUG_SEVERITY_HIGH_ARB: return "HIGH";
+	case GL_DEBUG_SEVERITY_MEDIUM_ARB: return "MEDIUM";
+	case GL_DEBUG_SEVERITY_LOW_ARB: return "LOW";
+	case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFY";
+	default: return "Unknown severity";
+	}
+}
+
+static void GLAPIENTRY gl_debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+	{
+		std::cerr << gl_debugSourceAttr(source) << ", " <<
+			 gl_debugTypeAttr(type) << ", " << 
+			gl_debugServerityAttr(severity) << ", " 
+			<< message;
+	}
+	else
+	{
+		std::cout << gl_debugSourceAttr(source) << ", " <<
+			gl_debugTypeAttr(type) << ", " << gl_debugServerityAttr(severity) << ", "
+			<< message;
+	}
+}
+
+static void gl_bindDebugCallback()
+{
+	if (GLEW_ARB_debug_output)
+		glDebugMessageCallbackARB(&gl_debugCallback, NULL);
+	else
+		std::cerr << "Failed to enable ARB_debug_output";
+}
+
 void status(std::ostream& out, const string& name, bool success)
 {
 	out 
@@ -87,7 +214,6 @@ void Shaders::onFinish(const std::function<void()> &callback)
 		callback();
 	}
 }
-
 
 uint Shaders::add(uint type, const string &key, const string &source)
 {
@@ -199,7 +325,44 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	gl_printInfo();
+	gl_bindDebugCallback();
+
 	Resources res;
+
+	vector<v3> vertices = { v3(-1, 0, 0), v3(1, 0, 0), v3(1, 1, 0), v3(-1, 1, 0) };
+	vector<v3> colors = { v3(1,0,0), v3(0,1,0), v3(0,0,1), v3(1,0,1) };
+	vector<u32> indexes = { 0, 1, 2, 2, 3, 0 };
+
+	uint vao = gl.vertexArray.create();
+	gl.vertexArray.bind(vao);
+
+	uint vbo = gl.buffer.gen();
+	gl.buffer.array.bind(vbo);
+	gl.buffer.array.data(vertices);
+
+	uint cbo = gl.buffer.gen();
+	gl.buffer.array.bind(cbo);
+	gl.buffer.array.data(colors);
+
+	uint ibo = gl.buffer.gen();
+	gl.buffer.element.bind(ibo);
+	gl.buffer.element.data(indexes);
+		
+	gl.vertexAttrib.enableArray(0);
+	gl.buffer.array.bind(vbo);
+	gl.vertexAttrib.pointerFloat(0, 3);
+
+	gl.vertexAttrib.enableArray(1);
+	gl.buffer.array.bind(cbo);
+	gl.vertexAttrib.pointerFloat(1, 3);
+
+	gl.buffer.element.bind(0);
+	gl.buffer.array.bind(0);
+	gl.vertexArray.bind(0);
+
+	gl.cullFace.enable();
+	gl.cullFace.back();
 
 	while (!glfw.window.shouldClose(window))
 	{
@@ -244,9 +407,14 @@ int main(int argc, char *argv[])
 		}
 
 		gl.viewport.set(glfw.window.framebufferSize(window));
+		gl.clear.depthBuffer();
+		gl.clear.colorBuffer(v3(0.3f, 0.3f, 0.3f));
+
 		//
+		gl.vertexArray.bind(vao);
+		gl.buffer.element.bind(ibo);
 		res.programs.use("pass");
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		gl.draw.triangles.elements(indexes.size());
 		//
 		glfw.window.swapBuffers(window);
 		glfw.pollEvents();
@@ -254,6 +422,21 @@ int main(int argc, char *argv[])
 		if (glfw.window.keyPress(window, GLFW_KEY_ESCAPE))
 			glfw.window.shouldClose(window, true);
 	}
+
+	gl.vertexArray.bind(vao);
+	gl.vertexAttrib.disableArray(1);
+	gl.vertexAttrib.disableArray(0);
+	gl.vertexArray.bind(0);
+	gl.vertexArray.del(vao);
+
+	gl.buffer.element.bind(0);
+	gl.buffer.del(ibo);
+	gl.buffer.array.bind(0);
+	gl.buffer.del(vbo);
+	gl.buffer.del(cbo);
+
+	gl.program.use(0);
+	gl.program.del(res.programs.id("pass"));
 
 	glfw.window.destroy(window);
 	glfw.terminate();
