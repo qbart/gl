@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include "types.hh"
 
-using Dimension = struct { int w, h; };
 
 struct GL
 {
@@ -19,6 +18,13 @@ struct GL
 		{
 			int val;
 			glGetIntegerv(name, &val);
+			return val;
+		}
+
+		float real(uint name)
+		{
+			float val;
+			glGetFloatv(name, &val);
 			return val;
 		}
 	} get;
@@ -326,7 +332,7 @@ struct GL
 	} cullFace;
 };
 
-const std::unordered_map<int, string> GL::Shader::Types = {
+const unordered_map<int, string> GL::Shader::Types = {
 	{GL_COMPUTE_SHADER, "GL_COMPUTE_SHADER"},
 	{GL_VERTEX_SHADER, "GL_VERTEX_SHADER"},
 	{GL_TESS_CONTROL_SHADER, "GL_TESS_CONTROL_SHADER"},
@@ -334,3 +340,119 @@ const std::unordered_map<int, string> GL::Shader::Types = {
 	{GL_GEOMETRY_SHADER, "GL_GEOMETRY_SHADER"},
 	{GL_FRAGMENT_SHADER, "GL_FRAGMENT_SHADER"},
 };
+
+
+struct Bytes
+{
+public:
+	explicit Bytes(int bytes) : _bytes(bytes) {}
+
+	int mb() const
+	{
+		return _bytes / 1024 / 1024;
+	}
+	std::string mb_s() const
+	{
+		std::stringstream ss;
+		ss << mb();
+		ss << " MB";
+		return ss.str();
+	}
+
+private:
+	int _bytes;
+};
+
+static void gl_printInfo()
+{
+	GL gl;
+
+	std::cout << "gl:            " << gl.get.str(GL_VERSION) << "\n";
+	std::cout << "glsl.version:  " << gl.get.str(GL_SHADING_LANGUAGE_VERSION) << "\n";
+	std::cout << "ssbo.max:      " << Bytes(gl.get.integer(GL_MAX_SHADER_STORAGE_BLOCK_SIZE)).mb_s() << "\n";
+	std::cout << "ubo.max:       " << Bytes(gl.get.integer(GL_MAX_UNIFORM_BLOCK_SIZE)).mb_s() << "\n";
+	std::cout << "viewports.max: " << gl.get.integer(GL_MAX_VIEWPORTS) << "\n";
+	std::cout << "\n";
+	std::cout << "framebuffer.width.max:   " << gl.get.integer(GL_MAX_FRAMEBUFFER_WIDTH) << "\n";
+	std::cout << "framebuffer.height.max:  " << gl.get.integer(GL_MAX_FRAMEBUFFER_HEIGHT) << "\n";
+	std::cout << "framebuffer.layers.max:  " << gl.get.integer(GL_MAX_FRAMEBUFFER_LAYERS) << "\n";
+	std::cout << "framebuffer.samples.max: " << gl.get.integer(GL_MAX_FRAMEBUFFER_SAMPLES) << "\n";
+	std::cout << "\n";
+	std::cout << "texture.max.size: " << gl.get.integer(GL_MAX_TEXTURE_SIZE) << "\n";
+	std::cout << "texture_image.max.units: " << gl.get.integer(GL_MAX_TEXTURE_IMAGE_UNITS) << "\n";
+	std::cout << "texture_buffer.max.size: " << gl.get.integer(GL_MAX_TEXTURE_BUFFER_SIZE) << "\n";
+	std::cout << "texture.max.rectangle_size: " << gl.get.integer(GL_MAX_RECTANGLE_TEXTURE_SIZE) << "\n";
+	std::cout << "depth_texture_samples.max: " << gl.get.integer(GL_MAX_DEPTH_TEXTURE_SAMPLES) << "\n";
+	std::cout << "renderbuffer.max.size: " << gl.get.integer(GL_MAX_RENDERBUFFER_SIZE) << "\n";
+	std::cout << "cube_map.texture.max.size: " << gl.get.integer(GL_MAX_CUBE_MAP_TEXTURE_SIZE) << "\n";
+	if (GLEW_EXT_texture_filter_anisotropic)
+		std::cout << "texture.anisotropy.max: " << gl.get.real(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT) << "\n";
+	else
+		std::cout << "texture.anisotropy.max: not supported\n";
+	std::cout << "\n";
+}
+
+static const char* gl_debugSourceAttr(GLenum source)
+{
+	switch (source)
+	{
+	case GL_DEBUG_SOURCE_API_ARB: return "API";
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB: return "WINDOW_SYSTEM";
+	case GL_DEBUG_SOURCE_SHADER_COMPILER_ARB: return "SHADER_COMPILER";
+	case GL_DEBUG_SOURCE_THIRD_PARTY_ARB: return "THIRD_PARTY";
+	case GL_DEBUG_SOURCE_APPLICATION_ARB: return "APPLICATION";
+	case GL_DEBUG_SOURCE_OTHER_ARB: return "OTHER";
+	default: return "Unknown source";
+	}
+}
+
+static const char* gl_debugTypeAttr(GLenum type)
+{
+	switch (type)
+	{
+	case GL_DEBUG_TYPE_ERROR_ARB: return "ERROR";
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB: return "DEPRECATED_BEHAVIOR";
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB: return "UNDEFINED_BEHAVIOR";
+	case GL_DEBUG_TYPE_PORTABILITY_ARB: return "PORTABILITY";
+	case GL_DEBUG_TYPE_PERFORMANCE_ARB: return "PERFORMANCE";
+	case GL_DEBUG_TYPE_OTHER_ARB: return "OTHER";
+	default: return "Unknown type";
+	}
+}
+
+static const char* gl_debugServerityAttr(GLenum severity)
+{
+	switch (severity)
+	{
+	case GL_DEBUG_SEVERITY_HIGH_ARB: return "HIGH";
+	case GL_DEBUG_SEVERITY_MEDIUM_ARB: return "MEDIUM";
+	case GL_DEBUG_SEVERITY_LOW_ARB: return "LOW";
+	case GL_DEBUG_SEVERITY_NOTIFICATION: return "NOTIFY";
+	default: return "Unknown severity";
+	}
+}
+
+static void GLAPIENTRY gl_debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+	{
+		std::cerr << gl_debugSourceAttr(source) << ", " <<
+			gl_debugTypeAttr(type) << ", " <<
+			gl_debugServerityAttr(severity) << ", "
+			<< message;
+	}
+	else
+	{
+		std::cout << gl_debugSourceAttr(source) << ", " <<
+			gl_debugTypeAttr(type) << ", " << gl_debugServerityAttr(severity) << ", "
+			<< message;
+	}
+}
+
+static void gl_bindDebugCallback()
+{
+	if (GLEW_ARB_debug_output)
+		glDebugMessageCallbackARB(&gl_debugCallback, NULL);
+	else
+		std::cerr << "Failed to enable ARB_debug_output";
+}

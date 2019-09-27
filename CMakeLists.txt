@@ -13,6 +13,7 @@ endif()
 
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
+# find_package(fmt REQUIRED)
 
 project("GL")
 
@@ -54,6 +55,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	deps/glfw-3.3/include/
 	${OPENGL_INCLUDE_DIRS}
 	${GLEW_INCLUDE_DIRS}
+	# ${FMT_INCLUDE_DIRS}
 )
 link_directories(${PROJECT_NAME}
 	deps/glfw-3.3/lib-vs2017/
@@ -65,5 +67,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${GLFW_LIB}
 	${GLEW_LIBRARIES}
 	${OPENGL_LIBRARIES}
-
+	# ${FMT_LIBRARIES}
 )

@@ -23,3 +23,5 @@ using unordered_map = std::unordered_map<K, V>;
 
 template <typename K>
 using vector = std::vector<K>;
+
+using Dimension = struct { int w, h; };
