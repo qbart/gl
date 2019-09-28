@@ -28,22 +28,22 @@ struct GLFW
 			glfwWindowHint(GLFW_RESIZABLE, static_cast<int>(resizable));
 		}
 
-		bool shouldClose(GLFWwindow* wnd)
+		bool shouldClose(GLFWwindow *wnd)
 		{
 			return glfwWindowShouldClose(wnd);
 		}
 
-		void shouldClose(GLFWwindow* wnd, bool value)
+		void shouldClose(GLFWwindow *wnd, bool value)
 		{
 			glfwSetWindowShouldClose(wnd, static_cast<int>(value));
 		}
 
-		void makeContextCurrent(GLFWwindow* wnd)
+		void makeContextCurrent(GLFWwindow *wnd)
 		{
 			glfwMakeContextCurrent(wnd);
 		}
 
-		void swapBuffers(GLFWwindow* wnd)
+		void swapBuffers(GLFWwindow *wnd)
 		{
 			glfwSwapBuffers(wnd);
 		}
@@ -53,26 +53,31 @@ struct GLFW
 			return glfwCreateWindow(w, h, title.c_str(), nullptr, nullptr);
 		}
 
-		void destroy(GLFWwindow* wnd)
+		void destroy(GLFWwindow *wnd)
 		{
 			glfwDestroyWindow(wnd);
 		}
 
-		Dimension framebufferSize(GLFWwindow* wnd)
+		Dimension framebufferSize(GLFWwindow *wnd)
 		{
 			int width, height;
 			glfwGetFramebufferSize(wnd, &width, &height);
 			return { width, height };
 		}
 
-		bool keyPress(GLFWwindow* wnd, int key)
+		bool keyPress(GLFWwindow *wnd, int key)
 		{
 			return glfwGetKey(wnd, key) == GLFW_PRESS;
 		}
 
-		bool keyRelease(GLFWwindow* wnd, int key)
+		bool keyRelease(GLFWwindow *wnd, int key)
 		{
 			return glfwGetKey(wnd, key) == GLFW_RELEASE;
+		}
+
+		void pos(GLFWwindow *wnd, const v2 &pos)
+		{
+			glfwSetWindowPos(wnd, pos.x, pos.y);
 		}
 
 		//
@@ -81,6 +86,24 @@ struct GLFW
 		{
 			hintContextVersion(4, 3);
 			hintCoreProfileForwardCompat();
+		}
+
+		void moveToHalfRight(GLFWwindow *wnd)
+		{
+			int w, h;
+			int fh;
+			int mx, my, mw, mh;
+			int l, t, r, b;
+
+			glfwGetWindowFrameSize(wnd, &l, &t, &r, &b);
+			glfwGetWindowSize(wnd, &w, &h);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+
+			fh = mh - (t + b - 1);
+
+			glfwSetWindowSize(wnd, mw / 2, fh);
+			pos(wnd, v2(mx + mw / 2, my + t));
 		}
 	} window;
 };

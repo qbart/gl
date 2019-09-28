@@ -190,7 +190,6 @@ int main(int argc, char *argv[])
 		glfw.terminate();
 		return 1;
 	}
-
 	glfw.window.makeContextCurrent(window);
 
 	if (!glew.init())
@@ -199,6 +198,9 @@ int main(int argc, char *argv[])
 		glfw.terminate();
 		return 1;
 	}
+#ifdef _DEBUG
+	glfw.window.moveToHalfRight(window);
+#endif
 
 	gl_printInfo();
 	gl_bindDebugCallback();
