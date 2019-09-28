@@ -5,14 +5,11 @@
 #include "glfw.hh"
 #include "types.hh"
 #include "files.hh"
+#include "programs.hh"
 #include "ui.hh"
 #include <vector>
 #include <unordered_map>
 #include <sstream>
-#include <tuple>
-#include <functional>
-#include <future>
-#include <atomic>
 
 
 void status(std::ostream& out, const string& name, bool success)
@@ -26,173 +23,6 @@ void status(std::ostream& out, const string& name, bool success)
 		<< "\n";
 }
 
-class Shaders
-{
-private:
-	std::atomic<uint> pendingTaskCount = 0;
-	unordered_map<string, std::future<Files::ReadStatus>> pendingTasks;
-	bool done = true;
-
-public:
-	void load(const string &path);
-	bool isLoading() const;
-	void onFinish(const string &path, const Files::OnRead &callback);
-	void onFinish(const std::function<void()> &callback);
-	void updateLoadProgress();
-};
-
-void Shaders::load(const string &path)
-{
-	done = false;
-	if (pendingTasks.count(path) == 0)
-	{
-		++pendingTaskCount;
-		pendingTasks.emplace(path,
-				std::async(std::launch::async, [this](const string &path) {
-					--pendingTaskCount;
-					return Files::readText(string(SHADERS_PATH) + path + string(".glsl"));
-				}, path)
-			);
-	}
-
-}
-
-bool Shaders::isLoading() const
-{
-	return !done;
-}
-
-void Shaders::updateLoadProgress()
-{
-	done = (pendingTaskCount == 0);
-}
-
-void Shaders::onFinish(const string &path, const Files::OnRead &callback)
-{
-	if (done)
-		callback(pendingTasks[path].get());
-}
-
-void Shaders::onFinish(const std::function<void()> &callback)
-{
-	if (done)
-	{
-		pendingTasks.clear();
-		callback();
-	}
-}
-
-class Programs
-{
-private:
-	GL gl;
-	unordered_map<string, uint> shaders;
-	unordered_map<string, uint> programs;
-	unordered_map<string, vector<uint>> attachedShaders;
-
-public:
-	Shaders loader;
-
-	uint create(const string &program)
-	{
-		auto id = gl.program.create();
-		programs[program] = id;
-
-		return id;
-	}
-
-	uint use(const string& program)
-	{
-		auto found = programs.find(program);
-		if (found != programs.end())
-		{
-			auto id = found->second;
-			gl.program.use(id);
-			return id;
-		}
-
-		return 0;
-	}
-
-	uint addShader(uint type, const string &key, const string &source)
-	{
-		auto id = gl.shader.create(type);
-		gl.shader.source(id, source);
-		gl.shader.compile(id);
-		shaders[key] = id;
-
-		return id;
-	}
-	auto addVertexShader(const string &key, const string &source) { return addShader(GL_VERTEX_SHADER, key, source); }
-	auto addFragmentShader(const string &key, const string &source) { return addShader(GL_FRAGMENT_SHADER, key, source); }
-	string compileLog(const string &shader)
-	{
-		auto id = shaders[shader];
-		auto type = gl.shader.getInt(id, GL_SHADER_TYPE);
-		auto maxLen = gl.shader.getInt(id, GL_INFO_LOG_LENGTH);
-
-		string kind = "???";
-		if (gl.shader.Types.find(type) != std::end(gl.shader.Types))
-			kind = gl.shader.Types.at(type);
-
-		std::stringstream ss;
-
-		if (!gl.shader.getInt(id, GL_COMPILE_STATUS))
-		{
-			ss << kind << ":\n";
-			ss << gl.shader.infoLog(id, maxLen) << "\n";
-		}
-		else
-			ss << kind << ": ok\n";
-
-		return ss.str();
-	}
-
-
-	bool link(const string& program)
-	{
-		auto id = programs[program];
-		gl.program.link(id);
-		use(program);
-		bool success = gl.program.getInt(id, GL_LINK_STATUS);
-
-		if (success)
-		{
-			// mark for deletion
-			for (const auto& id : attachedShaders[program])
-				gl.shader.detach(programs[program], id);
-
-			for (const auto& id : attachedShaders[program])
-				gl.shader.del(id);
-		}
-		gl.program.use(0);
-
-		return success;
-	}
-
-	void del(const string &program)
-	{
-		if (exists(program))
-		{
-			gl.program.del(programs[program]);
-			attachedShaders.erase(program);
-		}
-	}
-
-	void attachShader(const string &program, const string &shader)
-	{
-		auto shaderID = shaders[shader];
-		gl.shader.attach(programs[program], shaderID);
-		attachedShaders[program].push_back(shaderID);
-	}
-
-	bool exists(const string &program)
-	{
-		auto found = programs.find(program);
-		return found != programs.end();
-	}
-};
-
 struct Resources
 {
 	Programs programs;
@@ -204,6 +34,7 @@ int main(int argc, char *argv[])
 	GLFW glfw;
 	GL gl;
 	UI ui;
+	Resources res;
 
 	if (!glfw.init())
 	{
@@ -236,8 +67,6 @@ int main(int argc, char *argv[])
 	gl_bindDebugCallback();
 
 	auto ctx = ui.init(window);
-
-	Resources res;
 
 	vector<v3> vertices = { v3(-1, 0, 0), v3(1, 0, 0), v3(1, 1, 0), v3(-1, 1, 0) };
 	vector<v3> colors = { v3(1,0,0), v3(0,1,0), v3(0,0,1), v3(1,0,1) };

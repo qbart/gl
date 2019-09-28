@@ -74,14 +74,14 @@ struct GL
 			glCompileShader(shader);
 		}
 
-		int getInt(uint shader, uint param)
+		int getInt(uint shader, uint param) const
 		{
 			int val;
 			glGetShaderiv(shader, param, &val);
 			return val;
 		}
 
-		string infoLog(uint shader, int bufSize)
+		string infoLog(uint shader, int bufSize) const
 		{
 			vector<char> log;
 			if (bufSize > 0)
