@@ -1,53 +1,15 @@
 #include "programs.hh"
+#include "log.hh"
+#include <taskflow.hpp>
 
-void ShadersLoader::load(const string &path)
-{
-	done = false;
-	if (pendingTasks.count(path) == 0)
-	{
-		++pendingTaskCount;
-		pendingTasks.emplace(path,
-			std::async(std::launch::async, [this](const string &path) {
-			--pendingTaskCount;
-			return Files::readText(string(SHADERS_PATH) + path + string(".glsl"));
-		}, path)
-		);
-	}
-
-}
-
-bool ShadersLoader::isLoading() const
-{
-	return !done;
-}
-
-void ShadersLoader::updateLoadProgress()
-{
-	done = (pendingTaskCount == 0);
-}
-
-void ShadersLoader::onFinish(const string &path, const Files::OnRead &callback)
-{
-	if (done)
-		callback(pendingTasks[path].get());
-}
-
-void ShadersLoader::onFinish(const std::function<void()> &callback)
-{
-	if (done)
-	{
-		pendingTasks.clear();
-		callback();
-	}
-}
-
-//
 
 uint Programs::create(const string &program)
 {
 	auto id = gl.program.create();
 	programs[program] = id;
-
+	for (const auto &id : attachedShaders[program])
+		gl.shader.attach(programs[program], id);
+	
 	return id;
 }
 
@@ -62,16 +24,6 @@ uint Programs::use(const string& program)
 	}
 
 	return 0;
-}
-
-uint Programs::addShader(uint type, const string &shader, const string &source)
-{
-	auto id = gl.shader.create(type);
-	gl.shader.source(id, source);
-	gl.shader.compile(id);
-	shaders[shader] = id;
-
-	return id;
 }
 
 string Programs::compileLog(const string &shader) const
@@ -127,11 +79,54 @@ void Programs::del(const string &program)
 	}
 }
 
-void Programs::attachShader(const string &program, const string &shader)
+void Programs::load(const string & name)
 {
-	auto shaderID = shaders[shader];
-	gl.shader.attach(programs[program], shaderID);
-	attachedShaders[program].push_back(shaderID);
+	string basepath = string(SHADERS_PATH) + name;
+	string vertpath = basepath + "/vert.glsl";
+	string geompath = basepath + "/geom.glsl";
+	string fragpath = basepath + "/frag.glsl";
+
+	struct Shader
+	{
+		Files::ReadStatus vert;
+		Files::ReadStatus geom;
+		Files::ReadStatus frag;
+	} shader;
+
+	tf::Executor executor;
+	tf::Taskflow taskflow;
+
+	taskflow.emplace([&vertpath, &name, &shader]() {
+		if (Files::exists(vertpath))
+			shader.vert = Files::readText(vertpath);
+	});
+	taskflow.emplace([&geompath, &name, &shader]() {
+		if (Files::exists(geompath))
+			shader.geom = Files::readText(geompath);
+	});
+	taskflow.emplace([&fragpath, &name, &shader]() {
+		if (Files::exists(fragpath))
+			shader.frag = Files::readText(fragpath);
+	});
+
+	executor.run(taskflow).get();
+
+	if (Files::isLoaded(shader.vert))
+		addShader(GL_VERTEX_SHADER, name, "vert", Files::text(shader.vert));
+	if (Files::isLoaded(shader.geom))
+		addShader(GL_GEOMETRY_SHADER, name, "geom", Files::text(shader.geom));
+	if (Files::isLoaded(shader.frag))
+		addShader(GL_FRAGMENT_SHADER, name, "frag", Files::text(shader.frag));
+
+	create(name);
+	if (!link(name))
+	{
+		status(std::cerr, "program/" + name, false);
+		std::cerr << "-- Vert --\n" << compileLog(name + "/vert");
+		std::cerr << "-- Frag --\n" << compileLog(name + "/frag");
+	}
+	else
+		status(std::cout, "program/" + name, true);
 }
 
 bool Programs::exists(const string &program) const
@@ -140,3 +135,13 @@ bool Programs::exists(const string &program) const
 	return found != programs.end();
 }
 
+uint Programs::addShader(uint type, const string &program, const string &shader, const string &source)
+{
+	auto id = gl.shader.create(type);
+	gl.shader.source(id, source);
+	gl.shader.compile(id);
+	shaders[program + "/" + shader] = id;
+	attachedShaders[program].push_back(id);
+
+	return id;
+}

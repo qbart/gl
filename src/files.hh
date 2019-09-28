@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <functional>
+#include <filesystem>
 
 class Files
 {
@@ -42,5 +43,10 @@ public:
 	static const string& text(const Files::ReadStatus& status)
 	{
 		return std::get<1>(status);
+	}
+
+	static bool exists(const string &path)
+	{
+		return std::filesystem::exists(path.c_str());
 	}
 };

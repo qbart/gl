@@ -28,5 +28,6 @@ struct UI
 	void beginFrame();
 	void endFrame();
 	void draw();
+	void demo();
 };
 #endif

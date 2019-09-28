@@ -130,4 +130,9 @@ void UI::draw()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+void UI::demo()
+{
+	ImGui::ShowDemoWindow();
+}
+
 #endif

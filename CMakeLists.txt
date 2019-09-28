@@ -15,6 +15,7 @@ endif()
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(ImGui REQUIRED)
+find_package(Taskflow REQUIRED)
 
 project("GL")
 
@@ -49,6 +50,7 @@ add_executable(${PROJECT_NAME}
 	${GLM_SRC_FILES}
 	${GLFW_SRC_FILES}
 	${UI_SRC_FILES}
+	${TASKFLOW_SRC_FILES}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -58,6 +60,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	${OPENGL_INCLUDE_DIRS}
 	${GLEW_INCLUDE_DIRS}
 	${UI_INCLUDE_DIRS}
+	${TASKFLOW_INCLUDE_DIRS}
 )
 
 link_directories(${PROJECT_NAME}
@@ -66,6 +69,7 @@ link_directories(${PROJECT_NAME}
 
 find_library(GLFW_LIB glfw3 HINTS deps/glfw-3.3/lib-vc2017)
 
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_link_libraries(${PROJECT_NAME} PRIVATE
 	${GLFW_LIB}
 	${GLEW_LIBRARIES}

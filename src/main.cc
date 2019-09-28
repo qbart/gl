@@ -6,22 +6,12 @@
 #include "types.hh"
 #include "files.hh"
 #include "programs.hh"
+#include "log.hh"
 #include "ui.hh"
 #include <vector>
 #include <unordered_map>
 #include <sstream>
 
-
-void status(std::ostream& out, const string& name, bool success)
-{
-	out 
-		<< name
-		<< ": "
-		<< (success ? "\033[32m" : "\033[91m")
-		<< (success ? "ok" : "x")
-		<< "\033[0m"
-		<< "\n";
-}
 
 struct Resources
 {
@@ -102,39 +92,12 @@ int main(int argc, char *argv[])
 	gl.cullFace.enable();
 	gl.cullFace.back();
 
-	res.programs.loader.load("pass/vert");
-	res.programs.loader.load("pass/frag");
+	res.programs.load("pass");
 
 	bool reloading = false;
 
 	while (!glfw.window.shouldClose(window))
 	{
-		if (res.programs.loader.isLoading())
-		{
-			res.programs.loader.updateLoadProgress();
-
-			res.programs.loader.onFinish("pass/vert", [&res, &gl](const Files::ReadStatus& stat) {
-				res.programs.addVertexShader("pass/vert", Files::text(stat));
-			});
-			res.programs.loader.onFinish("pass/frag", [&res, &gl](const Files::ReadStatus& stat) {
-				res.programs.addFragmentShader("pass/frag", Files::text(stat));
-			});
-
-			res.programs.loader.onFinish([&res, &gl]() {
-				res.programs.create("pass");
-				res.programs.attachShader("pass", "pass/vert");
-				res.programs.attachShader("pass", "pass/frag");
-
-				if (!res.programs.link("pass"))
-				{
-					status(std::cerr, "program/pass", false);
-					std::cerr << "-- Vert --\n" << res.programs.compileLog("pass/vert");
-					std::cerr << "-- Frag --\n" << res.programs.compileLog("pass/frag");
-				}
-				else
-					status(std::cout, "program/pass", true);
-			});
-		}
 		ui.beginFrame();
 		ui.endFrame();
 
@@ -160,8 +123,7 @@ int main(int argc, char *argv[])
 			reloading = true;
 			gl.program.use(0);
 			res.programs.del("pass");
-			res.programs.loader.load("pass/vert");
-			res.programs.loader.load("pass/frag");
+			res.programs.load("pass");
 		}
 		if (glfw.window.keyRelease(window, GLFW_KEY_F5))
 			reloading = false;
