@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(SHADERS_PATH "${CMAKE_SOURCE_DIR}/res/shaders/")
+set(FONTS_PATH "${CMAKE_SOURCE_DIR}/res/fonts/")
 
 if(WIN32)
 	set(CMAKE_FIND_LIBRARY_PREFIXES "")
@@ -13,7 +14,7 @@ endif()
 
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
-# find_package(fmt REQUIRED)
+find_package(ImGui REQUIRED)
 
 project("GL")
 
@@ -40,13 +41,14 @@ add_definitions(
 	-D_WINDOWS
 	-DWIN32
 	-DSHADERS_PATH="${SHADERS_PATH}"
+	-DFONTS_PATH="${FONTS_PATH}"
 )
-
 
 add_executable(${PROJECT_NAME}
 	${SRC_FILES}
 	${GLM_SRC_FILES}
 	${GLFW_SRC_FILES}
+	${UI_SRC_FILES}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -55,8 +57,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	deps/glfw-3.3/include/
 	${OPENGL_INCLUDE_DIRS}
 	${GLEW_INCLUDE_DIRS}
-	# ${FMT_INCLUDE_DIRS}
+	${UI_INCLUDE_DIRS}
 )
+
 link_directories(${PROJECT_NAME}
 	deps/glfw-3.3/lib-vs2017/
 )
@@ -67,5 +70,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${GLFW_LIB}
 	${GLEW_LIBRARIES}
 	${OPENGL_LIBRARIES}
-	# ${FMT_LIBRARIES}
 )

@@ -75,5 +75,12 @@ struct GLFW
 			return glfwGetKey(wnd, key) == GLFW_RELEASE;
 		}
 
+		//
+
+		void hint430()
+		{
+			hintContextVersion(4, 3);
+			hintCoreProfileForwardCompat();
+		}
 	} window;
 };

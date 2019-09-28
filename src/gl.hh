@@ -1,33 +1,30 @@
 #pragma once
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <unordered_map>
 #include "types.hh"
-
+#include <sstream>
+#include <iostream>
 
 struct GL
 {
-	struct Get
+	string getString(uint name)
 	{
-		string str(uint name)
-		{
-			return string(reinterpret_cast<const char*>(glGetString(name)));
-		}
+		return string(reinterpret_cast<const char*>(glGetString(name)));
+	}
 
-		int integer(uint name)
-		{
-			int val;
-			glGetIntegerv(name, &val);
-			return val;
-		}
+	int getInt(uint name)
+	{
+		int val;
+		glGetIntegerv(name, &val);
+		return val;
+	}
 
-		float real(uint name)
-		{
-			float val;
-			glGetFloatv(name, &val);
-			return val;
-		}
-	} get;
+	float getFloat(uint name)
+	{
+		float val;
+		glGetFloatv(name, &val);
+		return val;
+	}
 
 	struct Clear
 	{
@@ -332,24 +329,14 @@ struct GL
 	} cullFace;
 };
 
-const unordered_map<int, string> GL::Shader::Types = {
-	{GL_COMPUTE_SHADER, "GL_COMPUTE_SHADER"},
-	{GL_VERTEX_SHADER, "GL_VERTEX_SHADER"},
-	{GL_TESS_CONTROL_SHADER, "GL_TESS_CONTROL_SHADER"},
-	{GL_TESS_EVALUATION_SHADER, "GL_TESS_EVALUATION_SHADER"},
-	{GL_GEOMETRY_SHADER, "GL_GEOMETRY_SHADER"},
-	{GL_FRAGMENT_SHADER, "GL_FRAGMENT_SHADER"},
-};
-
-
 struct Bytes
 {
 public:
-	explicit Bytes(int bytes) : _bytes(bytes) {}
+	explicit Bytes(int _bytes) : bytes(_bytes) {}
 
 	int mb() const
 	{
-		return _bytes / 1024 / 1024;
+		return bytes / 1024 / 1024;
 	}
 	std::string mb_s() const
 	{
@@ -360,33 +347,33 @@ public:
 	}
 
 private:
-	int _bytes;
+	int bytes;
 };
 
 static void gl_printInfo()
 {
 	GL gl;
 
-	std::cout << "gl:            " << gl.get.str(GL_VERSION) << "\n";
-	std::cout << "glsl.version:  " << gl.get.str(GL_SHADING_LANGUAGE_VERSION) << "\n";
-	std::cout << "ssbo.max:      " << Bytes(gl.get.integer(GL_MAX_SHADER_STORAGE_BLOCK_SIZE)).mb_s() << "\n";
-	std::cout << "ubo.max:       " << Bytes(gl.get.integer(GL_MAX_UNIFORM_BLOCK_SIZE)).mb_s() << "\n";
-	std::cout << "viewports.max: " << gl.get.integer(GL_MAX_VIEWPORTS) << "\n";
+	std::cout << "gl:            " << gl.getString(GL_VERSION) << "\n";
+	std::cout << "glsl.version:  " << gl.getString(GL_SHADING_LANGUAGE_VERSION) << "\n";
+	std::cout << "ssbo.max:      " << Bytes(gl.getInt(GL_MAX_SHADER_STORAGE_BLOCK_SIZE)).mb_s() << "\n";
+	std::cout << "ubo.max:       " << Bytes(gl.getInt(GL_MAX_UNIFORM_BLOCK_SIZE)).mb_s() << "\n";
+	std::cout << "viewports.max: " << gl.getInt(GL_MAX_VIEWPORTS) << "\n";
 	std::cout << "\n";
-	std::cout << "framebuffer.width.max:   " << gl.get.integer(GL_MAX_FRAMEBUFFER_WIDTH) << "\n";
-	std::cout << "framebuffer.height.max:  " << gl.get.integer(GL_MAX_FRAMEBUFFER_HEIGHT) << "\n";
-	std::cout << "framebuffer.layers.max:  " << gl.get.integer(GL_MAX_FRAMEBUFFER_LAYERS) << "\n";
-	std::cout << "framebuffer.samples.max: " << gl.get.integer(GL_MAX_FRAMEBUFFER_SAMPLES) << "\n";
+	std::cout << "framebuffer.width.max:   " << gl.getInt(GL_MAX_FRAMEBUFFER_WIDTH) << "\n";
+	std::cout << "framebuffer.height.max:  " << gl.getInt(GL_MAX_FRAMEBUFFER_HEIGHT) << "\n";
+	std::cout << "framebuffer.layers.max:  " << gl.getInt(GL_MAX_FRAMEBUFFER_LAYERS) << "\n";
+	std::cout << "framebuffer.samples.max: " << gl.getInt(GL_MAX_FRAMEBUFFER_SAMPLES) << "\n";
 	std::cout << "\n";
-	std::cout << "texture.max.size: " << gl.get.integer(GL_MAX_TEXTURE_SIZE) << "\n";
-	std::cout << "texture_image.max.units: " << gl.get.integer(GL_MAX_TEXTURE_IMAGE_UNITS) << "\n";
-	std::cout << "texture_buffer.max.size: " << gl.get.integer(GL_MAX_TEXTURE_BUFFER_SIZE) << "\n";
-	std::cout << "texture.max.rectangle_size: " << gl.get.integer(GL_MAX_RECTANGLE_TEXTURE_SIZE) << "\n";
-	std::cout << "depth_texture_samples.max: " << gl.get.integer(GL_MAX_DEPTH_TEXTURE_SAMPLES) << "\n";
-	std::cout << "renderbuffer.max.size: " << gl.get.integer(GL_MAX_RENDERBUFFER_SIZE) << "\n";
-	std::cout << "cube_map.texture.max.size: " << gl.get.integer(GL_MAX_CUBE_MAP_TEXTURE_SIZE) << "\n";
+	std::cout << "texture.max.size: " << gl.getInt(GL_MAX_TEXTURE_SIZE) << "\n";
+	std::cout << "texture_image.max.units: " << gl.getInt(GL_MAX_TEXTURE_IMAGE_UNITS) << "\n";
+	std::cout << "texture_buffer.max.size: " << gl.getInt(GL_MAX_TEXTURE_BUFFER_SIZE) << "\n";
+	std::cout << "texture.max.rectangle_size: " << gl.getInt(GL_MAX_RECTANGLE_TEXTURE_SIZE) << "\n";
+	std::cout << "depth_texture_samples.max: " << gl.getInt(GL_MAX_DEPTH_TEXTURE_SAMPLES) << "\n";
+	std::cout << "renderbuffer.max.size: " << gl.getInt(GL_MAX_RENDERBUFFER_SIZE) << "\n";
+	std::cout << "cube_map.texture.max.size: " << gl.getInt(GL_MAX_CUBE_MAP_TEXTURE_SIZE) << "\n";
 	if (GLEW_EXT_texture_filter_anisotropic)
-		std::cout << "texture.anisotropy.max: " << gl.get.real(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT) << "\n";
+		std::cout << "texture.anisotropy.max: " << gl.getFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT) << "\n";
 	else
 		std::cout << "texture.anisotropy.max: not supported\n";
 	std::cout << "\n";

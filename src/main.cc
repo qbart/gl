@@ -5,6 +5,7 @@
 #include "glfw.hh"
 #include "types.hh"
 #include "files.hh"
+#include "ui.hh"
 #include <vector>
 #include <unordered_map>
 #include <sstream>
@@ -12,6 +13,7 @@
 #include <functional>
 #include <future>
 #include <atomic>
+
 
 void status(std::ostream& out, const string& name, bool success)
 {
@@ -171,6 +173,7 @@ int main(int argc, char *argv[])
 	GLEW glew;
 	GLFW glfw;
 	GL gl;
+	UI ui;
 
 	if (!glfw.init())
 	{
@@ -178,8 +181,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	glfw.window.hintContextVersion(4, 3);
-	glfw.window.hintCoreProfileForwardCompat();
+	glfw.window.hint430();
 	glfw.window.hintResizable(true);
 
 	auto window = glfw.window.create(1280, 1024, "GL");
@@ -200,6 +202,8 @@ int main(int argc, char *argv[])
 
 	gl_printInfo();
 	gl_bindDebugCallback();
+
+	auto ctx = ui.init(window);
 
 	Resources res;
 
@@ -278,17 +282,20 @@ int main(int argc, char *argv[])
 				}
 			});
 		}
+		ui.beginFrame();
+		ui.endFrame();
 
 		gl.viewport.set(glfw.window.framebufferSize(window));
 		gl.clear.depthBuffer();
 		gl.clear.colorBuffer(v3(0.3f, 0.3f, 0.3f));
-
+		
 		//
 		gl.vertexArray.bind(vao);
 		gl.buffer.element.bind(ibo);
 		res.programs.use("pass");
 		gl.draw.triangles.elements(indexes.size());
 		//
+		ui.draw();
 		glfw.window.swapBuffers(window);
 		glfw.pollEvents();
 
@@ -310,6 +317,8 @@ int main(int argc, char *argv[])
 
 	gl.program.use(0);
 	gl.program.del(res.programs.id("pass"));
+
+	ui.terminate();
 
 	glfw.window.destroy(window);
 	glfw.terminate();
