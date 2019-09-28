@@ -29,11 +29,9 @@ void status(std::ostream& out, const string& name, bool success)
 class Shaders
 {
 private:
-	GL gl;
-	unordered_map<string, uint> shaders;
 	std::atomic<uint> pendingTaskCount = 0;
 	unordered_map<string, std::future<Files::ReadStatus>> pendingTasks;
-	bool done = false;
+	bool done = true;
 
 public:
 	void load(const string &path);
@@ -41,17 +39,11 @@ public:
 	void onFinish(const string &path, const Files::OnRead &callback);
 	void onFinish(const std::function<void()> &callback);
 	void updateLoadProgress();
-
-	uint add(uint shaderType, const string &key, const string &source);
-	auto addVertexShader(const string &key, const string &source) { return add(GL_VERTEX_SHADER, key, source); }
-	auto addFragmentShader(const string &key, const string &source) { return add(GL_FRAGMENT_SHADER, key, source); }
-	uint id(const string &key);
-
-	string compileLog(uint id);
 };
 
 void Shaders::load(const string &path)
 {
+	done = false;
 	if (pendingTasks.count(path) == 0)
 	{
 		++pendingTaskCount;
@@ -90,82 +82,120 @@ void Shaders::onFinish(const std::function<void()> &callback)
 	}
 }
 
-uint Shaders::add(uint type, const string &key, const string &source)
-{
-	auto id = gl.shader.create(type);
-	gl.shader.source(id, source);
-	gl.shader.compile(id);
-	shaders[key] = id;
-
-	return id;
-}
-
-string Shaders::compileLog(uint id)
-{
-	auto type = gl.shader.getInt(id, GL_SHADER_TYPE);
-	auto maxLen = gl.shader.getInt(id, GL_INFO_LOG_LENGTH);
-
-	string kind = "???";
-	if (gl.shader.Types.find(type) != std::end(gl.shader.Types))
-		kind = gl.shader.Types.at(type);
-
-	std::stringstream ss;
-
-	if (!gl.shader.getInt(id, GL_COMPILE_STATUS))
-	{
-		ss << kind << ":\n";
-		ss << gl.shader.infoLog(id, maxLen) << "\n";
-	}
-	else
-		ss << kind << ": ok\n";
-
-	return ss.str();
-}
-
-uint Shaders::id(const string &key)
-{
-	return shaders.at(key);
-}
-
 class Programs
 {
 private:
 	GL gl;
+	unordered_map<string, uint> shaders;
 	unordered_map<string, uint> programs;
+	unordered_map<string, vector<uint>> attachedShaders;
 
 public:
-	uint create(const string &key)
+	Shaders loader;
+
+	uint create(const string &program)
 	{
 		auto id = gl.program.create();
-		programs[key] = id;
+		programs[program] = id;
 
 		return id;
 	}
 
-	uint id(const string& key) const
+	uint use(const string& program)
 	{
-		return programs.at(key);
+		auto found = programs.find(program);
+		if (found != programs.end())
+		{
+			auto id = found->second;
+			gl.program.use(id);
+			return id;
+		}
+
+		return 0;
 	}
 
-	uint use(const string& key)
+	uint addShader(uint type, const string &key, const string &source)
 	{
-		auto id = programs[key];
-		gl.program.use(id);
+		auto id = gl.shader.create(type);
+		gl.shader.source(id, source);
+		gl.shader.compile(id);
+		shaders[key] = id;
+
 		return id;
 	}
-
-	bool link(const string& key)
+	auto addVertexShader(const string &key, const string &source) { return addShader(GL_VERTEX_SHADER, key, source); }
+	auto addFragmentShader(const string &key, const string &source) { return addShader(GL_FRAGMENT_SHADER, key, source); }
+	string compileLog(const string &shader)
 	{
-		auto id = programs[key];
+		auto id = shaders[shader];
+		auto type = gl.shader.getInt(id, GL_SHADER_TYPE);
+		auto maxLen = gl.shader.getInt(id, GL_INFO_LOG_LENGTH);
+
+		string kind = "???";
+		if (gl.shader.Types.find(type) != std::end(gl.shader.Types))
+			kind = gl.shader.Types.at(type);
+
+		std::stringstream ss;
+
+		if (!gl.shader.getInt(id, GL_COMPILE_STATUS))
+		{
+			ss << kind << ":\n";
+			ss << gl.shader.infoLog(id, maxLen) << "\n";
+		}
+		else
+			ss << kind << ": ok\n";
+
+		return ss.str();
+	}
+
+
+	bool link(const string& program)
+	{
+		auto id = programs[program];
 		gl.program.link(id);
-		return gl.program.getInt(id, GL_LINK_STATUS);
+		use(program);
+		bool success = gl.program.getInt(id, GL_LINK_STATUS);
+
+		if (success)
+		{
+			// mark for deletion
+			for (const auto& id : attachedShaders[program])
+				gl.shader.detach(programs[program], id);
+
+			for (const auto& id : attachedShaders[program])
+				gl.shader.del(id);
+		}
+		gl.program.use(0);
+
+		return success;
+	}
+
+	void del(const string &program)
+	{
+		if (exists(program))
+		{
+			gl.program.del(programs[program]);
+			attachedShaders.erase(program);
+		}
+	}
+
+	void attachShader(const string &program, const string &shader)
+	{
+		auto shaderID = shaders[shader];
+		gl.shader.attach(programs[program], shaderID);
+		attachedShaders[program].push_back(shaderID);
+	}
+
+	bool exists(const string &program)
+	{
+		auto found = programs.find(program);
+		return found != programs.end();
 	}
 };
 
 struct Resources
 {
 	Programs programs;
-	Shaders shaders;
 };
 
 int main(int argc, char *argv[])
@@ -243,45 +273,37 @@ int main(int argc, char *argv[])
 	gl.cullFace.enable();
 	gl.cullFace.back();
 
+	res.programs.loader.load("pass/vert");
+	res.programs.loader.load("pass/frag");
+
+	bool reloading = false;
+
 	while (!glfw.window.shouldClose(window))
 	{
-		if (res.shaders.isLoading())
+		if (res.programs.loader.isLoading())
 		{
-			res.shaders.load("pass/vert");
-			res.shaders.load("pass/frag");
+			res.programs.loader.updateLoadProgress();
 
-			res.shaders.updateLoadProgress();
-
-			res.shaders.onFinish("pass/vert", [&res, &gl](const Files::ReadStatus& stat) {
-				res.shaders.addVertexShader("pass/vert", Files::text(stat));
+			res.programs.loader.onFinish("pass/vert", [&res, &gl](const Files::ReadStatus& stat) {
+				res.programs.addVertexShader("pass/vert", Files::text(stat));
 			});
-			res.shaders.onFinish("pass/frag", [&res, &gl](const Files::ReadStatus& stat) {
-				res.shaders.addFragmentShader("pass/frag", Files::text(stat));
+			res.programs.loader.onFinish("pass/frag", [&res, &gl](const Files::ReadStatus& stat) {
+				res.programs.addFragmentShader("pass/frag", Files::text(stat));
 			});
 
-			res.shaders.onFinish([&res, &gl]() {
-				auto prog = res.programs.create("pass");
-				auto vert = res.shaders.id("pass/vert");
-				auto frag = res.shaders.id("pass/frag");
-				gl.shader.attach(prog, vert);
-				gl.shader.attach(prog, frag);
+			res.programs.loader.onFinish([&res, &gl]() {
+				res.programs.create("pass");
+				res.programs.attachShader("pass", "pass/vert");
+				res.programs.attachShader("pass", "pass/frag");
 
 				if (!res.programs.link("pass"))
 				{
 					status(std::cerr, "program/pass", false);
-					std::cerr << "-- Vertex --\n" << res.shaders.compileLog(vert);
-					std::cerr << "-- Fragment --\n" << res.shaders.compileLog(frag);
+					std::cerr << "-- Vert --\n" << res.programs.compileLog("pass/vert");
+					std::cerr << "-- Frag --\n" << res.programs.compileLog("pass/frag");
 				}
 				else
-				{
-					gl.program.use(prog);
-					gl.shader.detach(prog, vert);
-					gl.shader.detach(prog, frag);
-					gl.shader.del(vert);
-					gl.shader.del(frag);
-					gl.program.use(0);
 					status(std::cout, "program/pass", true);
-				}
 			});
 		}
 		ui.beginFrame();
@@ -303,6 +325,17 @@ int main(int argc, char *argv[])
 
 		if (glfw.window.keyPress(window, GLFW_KEY_ESCAPE))
 			glfw.window.shouldClose(window, true);
+
+		if (glfw.window.keyPress(window, GLFW_KEY_F5) && !reloading)
+		{
+			reloading = true;
+			gl.program.use(0);
+			res.programs.del("pass");
+			res.programs.loader.load("pass/vert");
+			res.programs.loader.load("pass/frag");
+		}
+		if (glfw.window.keyRelease(window, GLFW_KEY_F5))
+			reloading = false;
 	}
 
 	gl.vertexArray.bind(vao);
@@ -318,7 +351,7 @@ int main(int argc, char *argv[])
 	gl.buffer.del(cbo);
 
 	gl.program.use(0);
-	gl.program.del(res.programs.id("pass"));
+	res.programs.del("pass");
 
 	ui.terminate();
 
