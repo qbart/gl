@@ -35,13 +35,13 @@ int main(int argc, char *argv[])
 	glfw.window.hint430();
 	glfw.window.hintResizable(true);
 
-	auto window = glfw.window.create(1280, 1024, "GL");
-	if (!window)
+	auto wnd = glfw.window.create(1280, 1024, "GL");
+	if (!wnd)
 	{
 		glfw.terminate();
 		return 1;
 	}
-	glfw.window.makeContextCurrent(window);
+	glfw.window.makeContextCurrent(wnd);
 
 	if (!glew.init())
 	{
@@ -50,13 +50,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 #ifdef _DEBUG
-	glfw.window.moveToHalfRight(window);
+	glfw.window.moveToHalfRight(wnd);
 #endif
 
 	gl_printInfo();
 	gl_bindDebugCallback();
 
-	auto ctx = ui.init(window);
+	auto ctx = ui.init(wnd);
 
 	vector<v3> vertices = { v3(-1, 0, 0), v3(1, 0, 0), v3(1, 1, 0), v3(-1, 1, 0) };
 	vector<v3> colors = { v3(1,0,0), v3(0,1,0), v3(0,0,1), v3(1,0,1) };
@@ -96,12 +96,12 @@ int main(int argc, char *argv[])
 
 	bool reloading = false;
 
-	while (!glfw.window.shouldClose(window))
+	while (!glfw.window.shouldClose(wnd))
 	{
 		ui.beginFrame();
 		ui.endFrame();
 
-		gl.viewport.set(glfw.window.framebufferSize(window));
+		gl.viewport.set(glfw.window.framebufferSize(wnd));
 		gl.clear.depthBuffer();
 		gl.clear.colorBuffer(v3(0.3f, 0.3f, 0.3f));
 		
@@ -112,20 +112,18 @@ int main(int argc, char *argv[])
 		gl.draw.triangles.elements(indexes.size());
 		//
 		ui.draw();
-		glfw.window.swapBuffers(window);
+		glfw.window.swapBuffers(wnd);
 		glfw.pollEvents();
 
-		if (glfw.window.keyPress(window, GLFW_KEY_ESCAPE))
-			glfw.window.shouldClose(window, true);
+		if (glfw.window.keyPress(wnd, GLFW_KEY_ESCAPE))
+			glfw.window.shouldClose(wnd, true);
 
-		if (glfw.window.keyPress(window, GLFW_KEY_F5) && !reloading)
+		if (glfw.window.keyPress(wnd, GLFW_KEY_F5) && !reloading)
 		{
 			reloading = true;
-			gl.program.use(0);
-			res.programs.del("pass");
-			res.programs.load("pass");
+			res.programs.reloadAll();
 		}
-		if (glfw.window.keyRelease(window, GLFW_KEY_F5))
+		if (glfw.window.keyRelease(wnd, GLFW_KEY_F5))
 			reloading = false;
 	}
 
@@ -141,12 +139,11 @@ int main(int argc, char *argv[])
 	gl.buffer.del(vbo);
 	gl.buffer.del(cbo);
 
-	gl.program.use(0);
-	res.programs.del("pass");
+	res.programs.delAll();
 
 	ui.terminate();
 
-	glfw.window.destroy(window);
+	glfw.window.destroy(wnd);
 	glfw.terminate();
 
     return 0;

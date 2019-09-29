@@ -15,14 +15,14 @@ private:
 	GL gl;
 
 public:
-	uint create(const string &program);
-	uint use(const string& program);
-	string compileLog(const string &shader) const;
-	bool link(const string& program);
-	void del(const string &program);
 	void load(const string &name);
+	uint use(const string& program);
+	void reloadAll();
+	void delAll();
 
 private:
-	bool exists(const string &program) const;
+	uint create(const string &program);
+	bool link(const string& program);
+	string compileLog(const string &shader) const;
 	uint addShader(uint type, const string &program, const string &shader, const string &source);
 };

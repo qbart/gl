@@ -3,82 +3,6 @@
 #include <taskflow.hpp>
 
 
-uint Programs::create(const string &program)
-{
-	auto id = gl.program.create();
-	programs[program] = id;
-	for (const auto &id : attachedShaders[program])
-		gl.shader.attach(programs[program], id);
-	
-	return id;
-}
-
-uint Programs::use(const string& program)
-{
-	auto found = programs.find(program);
-	if (found != programs.end())
-	{
-		auto id = found->second;
-		gl.program.use(id);
-		return id;
-	}
-
-	return 0;
-}
-
-string Programs::compileLog(const string &shader) const
-{
-	auto id = shaders.at(shader);
-	auto type = gl.shader.getInt(id, GL_SHADER_TYPE);
-	auto maxLen = gl.shader.getInt(id, GL_INFO_LOG_LENGTH);
-
-	string kind = "???";
-	if (gl.shader.Types.find(type) != std::end(gl.shader.Types))
-		kind = gl.shader.Types.at(type);
-
-	std::stringstream ss;
-
-	if (!gl.shader.getInt(id, GL_COMPILE_STATUS))
-	{
-		ss << kind << ":\n";
-		ss << gl.shader.infoLog(id, maxLen) << "\n";
-	}
-	else
-		ss << kind << ": ok\n";
-
-	return ss.str();
-}
-
-bool Programs::link(const string& program)
-{
-	auto id = programs[program];
-	gl.program.link(id);
-	use(program);
-	bool success = gl.program.getInt(id, GL_LINK_STATUS);
-
-	if (success)
-	{
-		// mark for deletion
-		for (const auto& id : attachedShaders[program])
-			gl.shader.detach(programs[program], id);
-
-		for (const auto& id : attachedShaders[program])
-			gl.shader.del(id);
-	}
-	gl.program.use(0);
-
-	return success;
-}
-
-void Programs::del(const string &program)
-{
-	if (exists(program))
-	{
-		gl.program.del(programs[program]);
-		attachedShaders.erase(program);
-	}
-}
-
 void Programs::load(const string & name)
 {
 	string basepath = string(SHADERS_PATH) + name;
@@ -129,10 +53,99 @@ void Programs::load(const string & name)
 		status(std::cout, "program/" + name, true);
 }
 
-bool Programs::exists(const string &program) const
+uint Programs::use(const string& program)
 {
 	auto found = programs.find(program);
-	return found != programs.end();
+	if (found != programs.end())
+	{
+		auto id = found->second;
+		gl.program.use(id);
+		return id;
+	}
+
+	return 0;
+}
+
+void Programs::reloadAll()
+{
+	strings progsToRecreate;
+	
+	gl.program.use(0);
+	for (const auto &prog : programs)
+	{
+		progsToRecreate.push_back(prog.first);
+		gl.program.del(prog.second);
+	}
+	attachedShaders.clear();
+	shaders.clear();
+
+	for (const auto &prog : progsToRecreate)
+		load(prog);
+}
+
+void Programs::delAll()
+{
+	gl.program.use(0);
+	for (const auto &prog : programs)
+		gl.program.del(prog.second);
+
+	attachedShaders.clear();
+	shaders.clear();
+	programs.clear();
+}
+
+uint Programs::create(const string &program)
+{
+	auto id = gl.program.create();
+	programs[program] = id;
+	for (const auto &id : attachedShaders[program])
+		gl.shader.attach(programs[program], id);
+
+	return id;
+}
+
+bool Programs::link(const string& program)
+{
+	auto id = programs[program];
+	gl.program.link(id);
+	use(program);
+	bool success = gl.program.getInt(id, GL_LINK_STATUS);
+
+	if (success)
+	{
+		// mark for deletion
+		for (const auto& id : attachedShaders[program])
+			gl.shader.detach(programs[program], id);
+
+		for (const auto& id : attachedShaders[program])
+			gl.shader.del(id);
+	}
+	gl.program.use(0);
+
+	return success;
+}
+
+string Programs::compileLog(const string &shader) const
+{
+	auto id = shaders.at(shader);
+	auto type = gl.shader.getInt(id, GL_SHADER_TYPE);
+	auto maxLen = gl.shader.getInt(id, GL_INFO_LOG_LENGTH);
+
+	string kind = "???";
+	if (gl.shader.Types.find(type) != std::end(gl.shader.Types))
+		kind = gl.shader.Types.at(type);
+
+	std::stringstream ss;
+
+	if (!gl.shader.getInt(id, GL_COMPILE_STATUS))
+	{
+		ss << kind << ":\n";
+		ss << gl.shader.infoLog(id, maxLen) << "\n";
+	}
+	else
+		ss << kind << ": ok\n";
+
+	return ss.str();
 }
 
 uint Programs::addShader(uint type, const string &program, const string &shader, const string &source)

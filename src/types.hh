@@ -19,6 +19,7 @@ using u32 = std::uint32_t;
 using u64 = std::uint64_t;
 
 using string = std::string;
+using strings = std::vector<string>;
 
 template <typename K, typename V>
 using unordered_map = std::unordered_map<K, V>;
