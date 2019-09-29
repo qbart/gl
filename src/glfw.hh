@@ -28,7 +28,7 @@ struct GLFW
 			glfwWindowHint(GLFW_RESIZABLE, static_cast<int>(resizable));
 		}
 
-		bool shouldClose(GLFWwindow *wnd)
+		bool shouldClose(GLFWwindow *wnd) const
 		{
 			return glfwWindowShouldClose(wnd);
 		}
@@ -58,19 +58,19 @@ struct GLFW
 			glfwDestroyWindow(wnd);
 		}
 
-		Dimension framebufferSize(GLFWwindow *wnd)
+		Dimension framebufferSize(GLFWwindow *wnd) const
 		{
 			int width, height;
 			glfwGetFramebufferSize(wnd, &width, &height);
 			return { width, height };
 		}
 
-		bool keyPress(GLFWwindow *wnd, int key)
+		bool keyPress(GLFWwindow *wnd, int key) const
 		{
 			return glfwGetKey(wnd, key) == GLFW_PRESS;
 		}
 
-		bool keyRelease(GLFWwindow *wnd, int key)
+		bool keyRelease(GLFWwindow *wnd, int key) const
 		{
 			return glfwGetKey(wnd, key) == GLFW_RELEASE;
 		}

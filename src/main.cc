@@ -8,10 +8,10 @@
 #include "programs.hh"
 #include "log.hh"
 #include "ui.hh"
+#include "default_app.hh"
 #include <vector>
 #include <unordered_map>
 #include <sstream>
-
 
 struct Resources
 {
@@ -25,38 +25,12 @@ int main(int argc, char *argv[])
 	GL gl;
 	UI ui;
 	Resources res;
+	DefaultApp app;
 
-	if (!glfw.init())
-	{
-		std::cerr << "Failed to init GLFW";
+	if (!app.init(1280, 1024, "GL"))
 		return 1;
-	}
 
-	glfw.window.hint430();
-	glfw.window.hintResizable(true);
-
-	auto wnd = glfw.window.create(1280, 1024, "GL");
-	if (!wnd)
-	{
-		glfw.terminate();
-		return 1;
-	}
-	glfw.window.makeContextCurrent(wnd);
-
-	if (!glew.init())
-	{
-		std::cerr << "Failed to init GLEW";
-		glfw.terminate();
-		return 1;
-	}
-#ifdef _DEBUG
-	glfw.window.moveToHalfRight(wnd);
-#endif
-
-	gl_printInfo();
-	gl_bindDebugCallback();
-
-	auto ctx = ui.init(wnd);
+	auto ctx = ui.init(app.wnd);
 
 	vector<v3> vertices = { v3(-1, 0, 0), v3(1, 0, 0), v3(1, 1, 0), v3(-1, 1, 0) };
 	vector<v3> colors = { v3(1,0,0), v3(0,1,0), v3(0,0,1), v3(1,0,1) };
@@ -94,14 +68,12 @@ int main(int argc, char *argv[])
 
 	res.programs.load("pass");
 
-	bool reloading = false;
-
-	while (!glfw.window.shouldClose(wnd))
+	while (app.isOpen())
 	{
 		ui.beginFrame();
 		ui.endFrame();
 
-		gl.viewport.set(glfw.window.framebufferSize(wnd));
+		gl.viewport.set(app.framebufferSize());
 		gl.clear.depthBuffer();
 		gl.clear.colorBuffer(v3(0.3f, 0.3f, 0.3f));
 		
@@ -112,19 +84,13 @@ int main(int argc, char *argv[])
 		gl.draw.triangles.elements(indexes.size());
 		//
 		ui.draw();
-		glfw.window.swapBuffers(wnd);
-		glfw.pollEvents();
+		app.process();
 
-		if (glfw.window.keyPress(wnd, GLFW_KEY_ESCAPE))
-			glfw.window.shouldClose(wnd, true);
+		if (app.keyPress(GLFW_KEY_ESCAPE))
+			app.close();
 
-		if (glfw.window.keyPress(wnd, GLFW_KEY_F5) && !reloading)
-		{
-			reloading = true;
+		if (app.keyReleasedOnce(GLFW_KEY_F5))
 			res.programs.reloadAll();
-		}
-		if (glfw.window.keyRelease(wnd, GLFW_KEY_F5))
-			reloading = false;
 	}
 
 	gl.vertexArray.bind(vao);
@@ -142,9 +108,6 @@ int main(int argc, char *argv[])
 	res.programs.delAll();
 
 	ui.terminate();
-
-	glfw.window.destroy(wnd);
-	glfw.terminate();
 
     return 0;
 }
