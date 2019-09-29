@@ -32,7 +32,8 @@ bool DefaultApp::init(uint w, uint h, const string& title)
 		return false;
 	}
 
-	glfw.window.hint430();
+	glfw.window.hintContextVersion(4, 3);
+	glfw.window.hintCoreProfileForwardCompat();
 	glfw.window.hintResizable(true);
 
 	wnd = glfw.window.create(w, h, title.c_str());
@@ -52,7 +53,7 @@ bool DefaultApp::init(uint w, uint h, const string& title)
 	gl_printInfo();
 	gl_bindDebugCallback();
 #ifdef _DEBUG
-	glfw.window.moveToHalfRight(wnd);
+	moveToHalfRight();
 #endif
 	return true;
 }
@@ -96,3 +97,23 @@ bool DefaultApp::keyReleasedOnce(int key)
 
 	return false;
 }
+
+#ifdef _DEBUG
+void DefaultApp::moveToHalfRight()
+{
+	int w, h;
+	int fh;
+	int mx, my, mw, mh;
+	int l, t, r, b;
+
+	glfwGetWindowFrameSize(wnd, &l, &t, &r, &b);
+	glfwGetWindowSize(wnd, &w, &h);
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+
+	fh = mh - (t + b - 1);
+
+	glfw.window.size(wnd, { mw / 2, fh });
+	glfw.window.pos(wnd, v2(mx + mw / 2, my + t));
+}
+#endif

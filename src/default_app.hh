@@ -33,5 +33,9 @@ private:
 	unordered_map<int, KeyCounter> keyReleaseCount;
 	GLEW glew;
 	GLFW glfw;
+
+#ifdef _DEBUG
+	void moveToHalfRight();
+#endif
 };
 

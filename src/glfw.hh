@@ -80,30 +80,9 @@ struct GLFW
 			glfwSetWindowPos(wnd, pos.x, pos.y);
 		}
 
-		//
-
-		void hint430()
+		void size(GLFWwindow *wnd, const Dimension &dim)
 		{
-			hintContextVersion(4, 3);
-			hintCoreProfileForwardCompat();
-		}
-
-		void moveToHalfRight(GLFWwindow *wnd)
-		{
-			int w, h;
-			int fh;
-			int mx, my, mw, mh;
-			int l, t, r, b;
-
-			glfwGetWindowFrameSize(wnd, &l, &t, &r, &b);
-			glfwGetWindowSize(wnd, &w, &h);
-			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-			glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
-
-			fh = mh - (t + b - 1);
-
-			glfwSetWindowSize(wnd, mw / 2, fh);
-			pos(wnd, v2(mx + mw / 2, my + t));
+			glfwSetWindowSize(wnd, dim.w, dim.h);
 		}
 	} window;
 };
