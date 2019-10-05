@@ -31,3 +31,4 @@ using Dimension = struct { int w, h; };
 
 v4 rgb(byte r, byte g, byte b, byte a = 255);
 
+const v3 UP(0, 1, 0);

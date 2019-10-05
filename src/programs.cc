@@ -3,7 +3,7 @@
 #include <taskflow.hpp>
 
 
-void Programs::load(const string & name)
+void Programs::load(const string &name)
 {
 	string basepath = string(SHADERS_PATH) + name;
 	string vertpath = basepath + "/vert.glsl";
@@ -53,15 +53,17 @@ void Programs::load(const string & name)
 		status(std::cout, "program/" + name, true);
 }
 
-uint Programs::use(const string& program)
+uint Programs::use(const string &program)
 {
 	auto found = programs.find(program);
 	if (found != programs.end())
 	{
 		auto id = found->second;
 		gl.program.use(id);
+		inUseProg = id;
 		return id;
 	}
+	inUseProg = 0;
 
 	return 0;
 }
@@ -76,6 +78,7 @@ void Programs::reloadAll()
 		progsToRecreate.push_back(prog.first);
 		gl.program.del(prog.second);
 	}
+	uniformLocations.clear();
 	attachedShaders.clear();
 	shaders.clear();
 
@@ -89,9 +92,15 @@ void Programs::delAll()
 	for (const auto &prog : programs)
 		gl.program.del(prog.second);
 
+	uniformLocations.clear();
 	attachedShaders.clear();
 	shaders.clear();
 	programs.clear();
+}
+
+void Programs::uniform(const string &name, const mat4 &mat)
+{
+	gl.uniform.set(uniformLocation(name), mat);
 }
 
 uint Programs::create(const string &program)
@@ -104,7 +113,7 @@ uint Programs::create(const string &program)
 	return id;
 }
 
-bool Programs::link(const string& program)
+bool Programs::link(const string &program)
 {
 	auto id = programs[program];
 	gl.program.link(id);
@@ -157,4 +166,14 @@ uint Programs::addShader(uint type, const string &program, const string &shader,
 	attachedShaders[program].push_back(id);
 
 	return id;
+}
+
+int Programs::uniformLocation(const string & name)
+{
+	assert(inUseProg > 0);
+	auto foundLoc = uniformLocations[inUseProg].find(name);
+	if (foundLoc != end(uniformLocations[inUseProg]))
+		return foundLoc->second;
+	else
+		return uniformLocations[inUseProg][name] = gl.uniform.location(inUseProg, name);
 }

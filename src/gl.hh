@@ -7,6 +7,14 @@
 
 struct GL
 {
+	struct M
+	{
+		mat4 fov(float degAngle, const Dimension &size, float zNear = 0.001f, float zFar = 1000.0f)
+		{
+			return glm::perspectiveFov(glm::radians(degAngle), (float)size.w, (float)size.h, zNear, zFar);
+		}
+	} m;
+
 	string getString(uint name)
 	{
 		return string(reinterpret_cast<const char*>(glGetString(name)));
@@ -155,6 +163,16 @@ struct GL
 		int location(uint program, const string& name)
 		{
 			return glGetUniformLocation(program, name.c_str());
+		}
+
+		void set(uint loc, const v3 &v)
+		{
+			glUniform3fv(loc, 1, glm::value_ptr(v));
+		}
+
+		void set(uint loc, const mat4 &mat)
+		{
+			glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(mat));
 		}
 
 	} uniform;

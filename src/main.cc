@@ -13,6 +13,122 @@
 #include <unordered_map>
 #include <sstream>
 
+auto cube(float size)
+{
+	struct
+	{
+		vector<v3> verts;
+		vector<v3> colors;
+		vector<u32> indices;
+	} mesh;
+
+	float half = size * 0.5f;
+	float top = size;
+	float bottom = 0;
+
+	mesh.verts = {
+		// Face 1
+		// left bottom
+		v3(-half, bottom, -half),
+		v3(-half, bottom,  half),
+		v3(-half, top, half),
+		// left top
+		v3(-half, bottom, -half),
+		v3(-half, top, half),
+		v3(-half, top,-half),
+		// Face 2
+		// front bottom
+		v3(-half, bottom,  half),
+		v3(half, bottom,  half),
+		v3(-half, top, half),
+		// front top
+		v3(half, bottom,  half),
+		v3(half, top, half),
+		v3(-half, top, half),
+		// Face 3
+		// right bottom
+		v3(half, bottom,  half),
+		v3(half, bottom, -half),
+		v3(half, top, half),
+		// right top
+		v3(half, bottom, -half),
+		v3(half, top,-half),
+		v3(half, top, half),
+		// Face 4
+		// back bottom
+		v3(half, bottom, -half),
+		v3(-half, bottom, -half),
+		v3(half, top,-half),
+		// back top
+		v3(-half, bottom, -half),
+		v3(-half, top,-half),
+		v3(half, top,-half),
+		// Face 5
+		// up bottom
+		v3(half, top,-half),
+		v3(-half, top,-half),
+		v3(half, top, half),
+		// up top
+		v3(-half, top,-half),
+		v3(-half, top, half),
+		v3(half, top, half),
+		// Face 6
+		// down bottom
+		v3(-half, bottom,  half),
+		v3(-half, bottom, -half),
+		v3(half, bottom,  half),
+		// down top
+		v3(-half, bottom, -half),
+		v3(half, bottom, -half),
+		v3(half, bottom,  half)
+	};
+
+	mesh.indices = {
+		// Face 1
+		// left bottom
+		0, 1, 2,
+		// left top
+		3, 4, 5,
+		// Face 2
+		// front bottom
+		6, 7, 8,
+		// front top
+		9, 10, 11,
+		// Face 3
+		// right bottom
+		12, 13, 14,
+		// right top
+		15, 16, 17,
+		// Face 4
+		// back bottom
+		18, 19, 20,
+		// back top
+		21, 22, 23,
+		// Face 5
+		// up bottom
+		24, 25, 26,
+		// up top
+		27, 28, 29,
+		// Face 6
+		// down bottom
+		30, 31, 32,
+		// down top
+		33, 34, 35
+	};
+
+	for (auto i = 0; i < 6; ++i)
+	{
+		mesh.colors.push_back(v3(1, 0, 0));
+		mesh.colors.push_back(v3(1, 1, 0));
+		mesh.colors.push_back(v3(0, 1, 0));
+		mesh.colors.push_back(v3(0, 1, 1));
+		mesh.colors.push_back(v3(0, 0, 1));
+		mesh.colors.push_back(v3(1, 0, 1));
+	}
+
+	return std::move(mesh);
+}
+
 struct Resources
 {
 	Programs programs;
@@ -32,24 +148,22 @@ int main(int argc, char *argv[])
 
 	auto ctx = ui.init(app.wnd);
 
-	vector<v3> vertices = { v3(-1, 0, 0), v3(1, 0, 0), v3(1, 1, 0), v3(-1, 1, 0) };
-	vector<v3> colors = { v3(1,0,0), v3(0,1,0), v3(0,0,1), v3(1,0,1) };
-	vector<u32> indexes = { 0, 1, 2, 2, 3, 0 };
+	auto mesh = std::move(cube(1));
 
 	uint vao = gl.vertexArray.create();
 	gl.vertexArray.bind(vao);
 
 	uint vbo = gl.buffer.gen();
 	gl.buffer.array.bind(vbo);
-	gl.buffer.array.data(vertices);
+	gl.buffer.array.data(mesh.verts);
 
 	uint cbo = gl.buffer.gen();
 	gl.buffer.array.bind(cbo);
-	gl.buffer.array.data(colors);
+	gl.buffer.array.data(mesh.colors);
 
 	uint ibo = gl.buffer.gen();
 	gl.buffer.element.bind(ibo);
-	gl.buffer.element.data(indexes);
+	gl.buffer.element.data(mesh.indices);
 		
 	gl.vertexAttrib.enableArray(0);
 	gl.buffer.array.bind(vbo);
@@ -68,12 +182,17 @@ int main(int argc, char *argv[])
 
 	res.programs.load("pass");
 
+	mat4 view = glm::lookAt(v3(-2, 10, 10), v3(0, 0, 0), UP);
+
 	while (app.isOpen())
 	{
 		ui.beginFrame();
 		ui.endFrame();
 
-		gl.viewport.set(app.framebufferSize());
+		auto size = app.framebufferSize();
+		auto proj = gl.m.fov(55, size);
+		auto model = mat4(1.0f);
+		gl.viewport.set(size);
 		gl.clear.depthBuffer();
 		gl.clear.colorBuffer(v3(0.3f, 0.3f, 0.3f));
 		
@@ -81,7 +200,10 @@ int main(int argc, char *argv[])
 		gl.vertexArray.bind(vao);
 		gl.buffer.element.bind(ibo);
 		res.programs.use("pass");
-		gl.draw.triangles.elements(indexes.size());
+		res.programs.uniform("PROJ", proj);
+		res.programs.uniform("VIEW", view);
+		res.programs.uniform("MODEL", model);
+		gl.draw.triangles.elements(mesh.indices.size());
 		//
 		ui.draw();
 		app.process();

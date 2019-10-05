@@ -9,7 +9,7 @@ UI::Context UI::init(GLFWwindow *wnd)
 	ctx.ptr = ImGui::CreateContext();
 
 	ctx.io().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	ImGui::StyleColorsClassic();
+	ImGui::StyleColorsDark();
 
 	auto &style = ImGui::GetStyle();
 	auto &colors = style.Colors;
@@ -28,26 +28,26 @@ UI::Context UI::init(GLFWwindow *wnd)
 	v4 cPrimaryHover(rgb(4, 250, 198));
 	v4 cPrimaryActive(rgb(187, 134, 252));
 
-	colors[ImGuiCol_Button] = cPrimary;
-	colors[ImGuiCol_ButtonHovered] = cPrimaryHover;
-	colors[ImGuiCol_ButtonActive] = cPrimaryActive;
+	//colors[ImGuiCol_Button] = cPrimary;
+	//colors[ImGuiCol_ButtonHovered] = cPrimaryHover;
+	//colors[ImGuiCol_ButtonActive] = cPrimaryActive;
 
-	colors[ImGuiCol_ScrollbarBg] = clTransparent;
-	colors[ImGuiCol_ScrollbarGrab] = cPrimary;
-	colors[ImGuiCol_ScrollbarGrabHovered] = cPrimaryHover;
-	colors[ImGuiCol_ScrollbarGrabActive] = cPrimaryActive;
+	//colors[ImGuiCol_ScrollbarBg] = clTransparent;
+	//colors[ImGuiCol_ScrollbarGrab] = cPrimary;
+	//colors[ImGuiCol_ScrollbarGrabHovered] = cPrimaryHover;
+	//colors[ImGuiCol_ScrollbarGrabActive] = cPrimaryActive;
 
-	colors[ImGuiCol_Separator] = cPrimary;
-	colors[ImGuiCol_SeparatorHovered] = cPrimaryHover;
-	colors[ImGuiCol_SeparatorActive] = cPrimaryActive;
+	//colors[ImGuiCol_Separator] = cPrimary;
+	//colors[ImGuiCol_SeparatorHovered] = cPrimaryHover;
+	//colors[ImGuiCol_SeparatorActive] = cPrimaryActive;
 
-	colors[ImGuiCol_ResizeGrip] = cPrimary;
-	colors[ImGuiCol_ResizeGripHovered] = cPrimaryHover;
-	colors[ImGuiCol_ResizeGripActive] = cPrimaryActive;
+	//colors[ImGuiCol_ResizeGrip] = cPrimary;
+	//colors[ImGuiCol_ResizeGripHovered] = cPrimaryHover;
+	//colors[ImGuiCol_ResizeGripActive] = cPrimaryActive;
 
-	colors[ImGuiCol_FrameBg] = rgb(0, 0, 0);
-	colors[ImGuiCol_FrameBgHovered] = cPrimaryHover;
-	colors[ImGuiCol_FrameBgActive] = cPrimaryActive;
+	//colors[ImGuiCol_FrameBg] = rgb(0, 0, 0);
+	//colors[ImGuiCol_FrameBgHovered] = cPrimaryHover;
+	//colors[ImGuiCol_FrameBgActive] = cPrimaryActive;
 
 
 	/*
