@@ -6,6 +6,5 @@
 ```
 mkdir build/
 cd build/
-#cmake -G "NMake Makefiles" ..
-cmake -G "Visual Studio 15 2017" ..
+cmake -G "Visual Studio 16 2019" -A Win32 ..
 ```

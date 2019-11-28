@@ -64,10 +64,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 link_directories(${PROJECT_NAME}
-	deps/glfw-3.3/lib-vs2017/
+	deps/glfw-3.3/lib-vs2019/
 )
 
-find_library(GLFW_LIB glfw3 HINTS deps/glfw-3.3/lib-vc2017)
+find_library(GLFW_LIB glfw3 HINTS deps/glfw-3.3/lib-vc2019)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_link_libraries(${PROJECT_NAME} PRIVATE
